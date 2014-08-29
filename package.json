@@ -1,0 +1,37 @@
+{
+    "name": "nodebb-plugin-import-ipboard",
+    "version": "0.0.1",
+    "description": "a IP.Board exporter to NodeBB",
+    "main": "./index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/akhoury/nodebb-plugin-import-ipboard"
+    },
+    "keywords": [
+        "ipboard",
+        "nodebb",
+        "plugin",
+        "migrate",
+        "convert",
+        "export",
+        "import"
+    ],
+    "author": {
+        "name": "akhoury",
+        "email": "bentael@gmail.com"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/akhoury/nodebb-plugin-import-ipboard/issues"
+    },
+    "dependencies": {
+        "underscore": "~1.6.0",
+        "fs-extra": "~0.11.0",
+        "async": "~0.9.0",
+        "marked": "~0.3.2",
+        "mysql": "~2.4.2"
+    }
+}

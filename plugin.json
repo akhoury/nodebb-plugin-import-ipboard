@@ -1,0 +1,11 @@
+{
+	"id": "nodebb-plugin-import-ipboard",
+	"name": "nodebb-plugin-import-ipboard",
+	"description": "Export your IP.Board to NodeBB ",
+	"url": "https://github.com/akhoury/nodebb-plugin-import-ipboard",
+	"library": "./admin/index.js",
+	"hooks": [
+		{ "hook": "filter:admin.header.build", "method": "admin.menu", "callbacked": false },
+		{ "hook": "filter:admin.create_routes", "method": "admin.route", "callbacked": true }
+	]
+}
