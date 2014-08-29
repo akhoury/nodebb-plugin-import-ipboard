@@ -2,8 +2,11 @@
 var async = require('async');
 var mysql = require('mysql');
 var _ = require('underscore');
+var fs = require('fs-extra');
 var noop = function(){};
-var logPrefix = '[nodebb-plugin-import-ipboard]';
+var pkg = fs.readJsonSync('./package.json');
+var name = pkg.id.replace(/nodebb-plugin-import-/, '');
+var logPrefix = '[' + pkg.id + ']';
 
 (function(Exporter) {
 
@@ -17,13 +20,13 @@ var logPrefix = '[nodebb-plugin-import-ipboard]';
             user: config.dbuser || config.user || 'root',
             password: config.dbpass || config.pass || config.password || '',
             port: config.dbport || config.port || 3306,
-            database: config.dbname || config.name || config.database || 'ipboard'
+            database: config.dbname || config.name || config.database || name
         };
 
         Exporter.log(_config);
 
         Exporter.config(_config);
-        Exporter.config('prefix', config.prefix || config.tablePrefix || 'IPB_');
+        Exporter.config('prefix', config.prefix || config.tablePrefix || pkg._tablePrefix || '');
 
         Exporter.connection = mysql.createConnection(_config);
         Exporter.connection.connect();
@@ -38,6 +41,8 @@ var logPrefix = '[nodebb-plugin-import-ipboard]';
         var err;
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
+
+        /* REPLACE QUERY */
         var query = 'SELECT ';
 
         if (!Exporter.connection) {
@@ -97,6 +102,8 @@ var logPrefix = '[nodebb-plugin-import-ipboard]';
         var err;
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
+
+        /* REPLACE QUERY */
         var query = 'SELECT ';
 
         if (!Exporter.connection) {
@@ -139,6 +146,8 @@ var logPrefix = '[nodebb-plugin-import-ipboard]';
         var err;
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
+
+        /* REPLACE QUERY */
         var query = 'SELECt ';
 
         if (!Exporter.connection) {
@@ -194,6 +203,8 @@ var logPrefix = '[nodebb-plugin-import-ipboard]';
         var err;
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
+
+        /* REPLACE QUERY */
         var query = 'SELECT ';
 
         if (!Exporter.connection) {
