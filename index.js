@@ -1,12 +1,14 @@
 
+var path = require('path');
 var async = require('async');
 var mysql = require('mysql');
+var moment = require('moment');
 var _ = require('underscore');
 var fs = require('fs-extra');
 var noop = function(){};
-var pkg = fs.readJsonSync('./package.json');
-var name = pkg.id.replace(/nodebb-plugin-import-/, '');
-var logPrefix = '[' + pkg.id + ']';
+var pkg = fs.readJsonSync(path.join(__dirname, '/package.json'));
+var name = pkg.name.replace(/nodebb-plugin-import-/, '');
+var logPrefix = '[' + pkg.name + ']';
 
 (function(Exporter) {
 
@@ -34,83 +36,140 @@ var logPrefix = '[' + pkg.id + ']';
         callback(null, Exporter.config());
     };
 
-    Exporter.getUsers = function(callback) {
-        Exporter.log('getUsers');
-        callback = !_.isFunction(callback) ? noop : callback;
-
-        var err;
-        var prefix = Exporter.config('prefix');
-        var startms = +new Date();
-
-        /* REPLACE QUERY */
-        var query = 'SELECT ';
-
-        if (!Exporter.connection) {
-            err = {error: 'MySQL connection is not setup. Run setup(config) first'};
-            Exporter.error(err.error);
-            return callback(err);
+    // usually that's unecessary, but IP.Board's schema is a little different
+    var getGroups = function(config, callback) {
+        Exporter.log('getGroups');
+        if (_.isFunction(config)) {
+            callback = config;
+            config = {};
         }
-
+        callback = !_.isFunction(callback) ? noop : callback;
+        if (!Exporter.connection) {
+            Exporter.setup(config);
+        }
+        var prefix = Exporter.config('prefix');
+        var query = 'SELECT '
+            + prefix + 'groups.g_id as _gid, '
+            + prefix + 'groups.g_view_board as _notbanned, ' // not sure, just making an assumption
+            + prefix + 'groups.g_post_new_topics as _pending, ' // not sure, just making an assumption
+            + prefix + 'groups.g_open_close_posts as _administrator, ' // not sure, just making an assumption
+            + prefix + 'groups.g_is_supmod as _moderator ' // not sure, just making an assumption
+            + ' from ' + prefix + 'groups ';
         Exporter.connection.query(query,
             function(err, rows) {
                 if (err) {
                     Exporter.error(err);
                     return callback(err);
                 }
-
-                //normalize here
                 var map = {};
                 rows.forEach(function(row) {
-                    if (row._username && row._email) {
-
-                        // nbb forces signatures to be less than 150 chars
-                        // keeping it HTML see https://github.com/akhoury/nodebb-plugin-import#markdown-note
-                        row._signature = Exporter.truncateStr(row._signature || '', 150);
-
-                        // from unix timestamp (s) to JS timestamp (ms)
-                        row._joindate = ((row._joindate || 0) * 1000) || startms;
-
-                        // lower case the email for consistency
-                        row._email = row._email.toLowerCase();
-
-                        // I don't know about you about I noticed a lot my users have incomplete urls, urls like: http://
-                        row._picture = Exporter.validateUrl(row._picture);
-                        row._website = Exporter.validateUrl(row._website);
-
-                        map[row._uid] = row;
-                    } else {
-                        var requiredValues = [row._username, row._email];
-                        var requiredKeys = ['_username','_email'];
-                        var falsyIndex = Exporter.whichIsFalsy(requiredValues);
-
-                        Exporter.warn('Skipping user._uid: ' + row._uid + ' because ' + requiredKeys[falsyIndex] + ' is falsy. Value: ' + requiredValues[falsyIndex]);
-
-                    }
+                    map[row._gid] = row;
                 });
-
                 // keep a copy of the users in memory here
-                Exporter._users = map;
-
+                Exporter._groups = map;
                 callback(null, map);
             });
     };
 
-    Exporter.getCategories = function(callback) {
-        Exporter.log('getCategories');
+    Exporter.getUsers = function(config, callback) {
+        Exporter.log('getUsers');
+
+        if (_.isFunction(config)) {
+            callback = config;
+            config = {};
+        }
+
         callback = !_.isFunction(callback) ? noop : callback;
 
-        var err;
+        if (!Exporter.connection) {
+            Exporter.setup(config);
+        }
+
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
 
-        /* REPLACE QUERY */
-        var query = 'SELECT ';
+        var query = 'SELECT ' + prefix + 'members.member_id as _uid, '
+            + prefix + 'members.name as _username, '
+            + prefix + 'members.members_display_name as _alternativeUsername, '
+            + prefix + 'members.email as _email, '
+            + prefix + 'members.member_group_id as _gid, '
+            + prefix + 'members.joined as _joindate, '
+            + prefix + 'members.title as _title, '
+            + prefix + 'members.members_profile_views as _profileviews, '
+            + 'CONCAT(' + prefix + 'members.bday_month, \'/\', ' + prefix + 'members.bday_day, \'/\', '  + prefix + 'members.bday_year)' + ' as _birthday '
+            + ' from ' + prefix + 'members ';
+        // _banned and _level are determined below
+
+        getGroups(function(err, groups) {
+            Exporter.connection.query(query,
+                function(err, rows) {
+                    if (err) {
+                        Exporter.error(err);
+                        return callback(err);
+                    }
+
+                    //normalize here
+                    var map = {};
+                    rows.forEach(function(row) {
+                        if (row._username && row._email) {
+
+                            // nbb forces signatures to be less than 150 chars
+                            // keeping it HTML see https://github.com/akhoury/nodebb-plugin-import#markdown-note
+                            row._signature = Exporter.truncateStr(row._signature || '', 150);
+                            // from unix timestamp (s) to JS timestamp (ms)
+                            row._joindate = ((row._joindate || 0) * 1000) || startms;
+                            // lower case the email for consistency
+                            row._email = row._email.toLowerCase();
+                            row._birthday = moment(row._birthday, 'MM/DD/YYYY').isValid() ? row._birthday : '';
+                            // I don't know about you about I noticed a lot my users have incomplete urls, urls like: http://
+                            row._picture = Exporter.validateUrl(row._picture);
+                            row._website = Exporter.validateUrl(row._website);
+
+                            // let's check the group that this user belongs to and set the right privileges
+                            row._level = groups[row._gid]._administrator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
+                            row._banned = groups[row._gid]._notbanned > 0 ? 0 : 1;
+
+                            map[row._uid] = row;
+                        } else {
+                            var requiredValues = [row._username, row._email];
+                            var requiredKeys = ['_username','_email'];
+                            var falsyIndex = Exporter.whichIsFalsy(requiredValues);
+
+                            Exporter.warn('Skipping user._uid: ' + row._uid + ' because ' + requiredKeys[falsyIndex] + ' is falsy. Value: ' + requiredValues[falsyIndex]);
+
+                        }
+                    });
+
+                    // keep a copy of the users in memory here
+                    Exporter._users = map;
+
+                    callback(null, map);
+                });
+        });
+    };
+
+    Exporter.getCategories = function(config, callback) {
+        Exporter.log('getCategories');
+
+        if (_.isFunction(config)) {
+            callback = config;
+            config = {};
+        }
+
+        callback = !_.isFunction(callback) ? noop : callback;
 
         if (!Exporter.connection) {
-            err = {error: 'MySQL connection is not setup. Run setup(config) first'};
-            Exporter.error(err.error);
-            return callback(err);
+            Exporter.setup(config);
         }
+
+        var prefix = Exporter.config('prefix');
+        var startms = +new Date();
+        var query = 'SELECT '
+            + prefix + 'forums.id as _cid, '
+            + prefix + 'forums.name as _name, '
+            + prefix + 'forums.description as _description, '
+            + prefix + 'forums.parent_id as _parent '
+            + ' from ' + prefix + 'forums ';
 
         Exporter.connection.query(query,
             function(err, rows) {
@@ -139,22 +198,41 @@ var logPrefix = '[' + pkg.id + ']';
             });
     };
 
-    Exporter.getTopics = function(callback) {
+    Exporter.getTopics = function(config, callback) {
         Exporter.log('getTopics');
+
+        if (_.isFunction(config)) {
+            callback = config;
+            config = {};
+        }
+
         callback = !_.isFunction(callback) ? noop : callback;
 
-        var err;
+        if (!Exporter.connection) {
+            Exporter.setup(config);
+        }
+
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
 
-        /* REPLACE QUERY */
-        var query = 'SELECt ';
+        var query = 'SELECT '
+            + prefix + 'topics.tid as _tid, '
+            + prefix + 'topics.starter_id as _uid, '
+            + prefix + 'topics.forum_id as _cid, '
+            + prefix + 'topics.topic_firstpost as _pid, '
+            + prefix + 'topics.title as _title, '
+            + prefix + 'topics.start_date as _timestamp, '
+            + prefix + 'topics.views as _viewcount, '
+            + prefix + 'topics.state as _status, '
+            + prefix + 'topics.pinned as _pinned, '
+            + prefix + 'topics.approved as _approved, '
+            + prefix + 'topics.topic_answered_pid as _answerpid, '
+            + prefix + 'posts.post as _content, '
+            + prefix + 'posts.topic_id as _post_tid '
+            + 'FROM ' + prefix + 'topics, ' + prefix + 'posts '
+            + 'WHERE ' + prefix + 'topics.tid=' + prefix + 'posts.topic_id '
+            + 'AND ' + prefix + 'posts.new_topic=1 ';
 
-        if (!Exporter.connection) {
-            err = {error: 'MySQL connection is not setup. Run setup(config) first'};
-            Exporter.error(err.error);
-            return callback(err);
-        }
 
         Exporter.connection.query(query,
             function(err, rows) {
@@ -196,22 +274,32 @@ var logPrefix = '[' + pkg.id + ']';
             });
     };
 
-    Exporter.getPosts = function(callback) {
+    Exporter.getPosts = function(config, callback) {
         Exporter.log('getPosts');
+
+        if (_.isFunction(config)) {
+            callback = config;
+            config = {};
+        }
+
         callback = !_.isFunction(callback) ? noop : callback;
 
-        var err;
+        if (!Exporter.connection) {
+            Exporter.setup(config);
+        }
+
         var prefix = Exporter.config('prefix');
         var startms = +new Date();
 
-        /* REPLACE QUERY */
-        var query = 'SELECT ';
-
-        if (!Exporter.connection) {
-            err = {error: 'MySQL connection is not setup. Run setup(config) first'};
-            Exporter.error(err.error);
-            return callback(err);
-        }
+        var query = 'SELECT '
+            + prefix + 'posts.pid as _pid, '
+            + prefix + 'posts.topic_id as _tid, '
+            + prefix + 'posts.author_id as _uid, '
+            + prefix + 'posts.post as _content, '
+            + prefix + 'posts.post_date as _timestamp, '
+            + prefix + 'posts.edit_time as _edittimestamp '
+            + 'FROM ' + prefix + 'posts '
+            + 'WHERE ' + prefix + 'posts.new_topic=0 ';
 
         Exporter.connection.query(query,
             function(err, rows) {
@@ -252,7 +340,9 @@ var logPrefix = '[' + pkg.id + ']';
         Exporter.connection.end();
 
         Exporter.log('Done');
-        callback();
+        if (_.isFunction(callback)) {
+            callback();
+        }
     };
 
     Exporter.testrun = function(config, callback) {
@@ -289,7 +379,7 @@ var logPrefix = '[' + pkg.id + ']';
         args.unshift(logPrefix);
         console.log.apply(console, args);
     };
-    
+
     Exporter.error = function() {
         var args = _.toArray(arguments);
         args.unshift(logPrefix);
