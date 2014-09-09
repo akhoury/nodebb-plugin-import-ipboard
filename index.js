@@ -126,7 +126,7 @@ var logPrefix = '[' + pkg.name + ']';
                             row._website = Exporter.validateUrl(row._website);
 
                             // let's check the group that this user belongs to and set the right privileges
-                            row._level = groups[row._gid]._administrator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
+                            row._level = groups[row._gid]._administrator > 0 && groups[row._gid]._moderator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
                             row._banned = groups[row._gid]._notbanned > 0 ? 0 : 1;
 
                             map[row._uid] = row;
