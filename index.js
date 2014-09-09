@@ -321,7 +321,7 @@ var logPrefix = '[' + pkg.name + ']';
                 rows.forEach(function(row) {
                     if (Exporter._topics[row._tid] && row._content) {
                         row._timestamp = ((row._timestamp || 0) * 1000) || startms;
-                        map[row._tid] = row;
+                        map[row._pid] = row;
                     } else {
                         var requiredValues = [Exporter._topics[row._tid], row._content];
                         var requiredKeys = ['topic', 'content'];
