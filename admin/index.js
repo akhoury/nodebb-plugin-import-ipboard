@@ -2,8 +2,8 @@
 var	fs = require('fs-extra'),
 	marked = require('marked'),
 	path = require('path'),
-	pkg = fs.readJsonSync(path.join(__dirname + '../package.json')),
-    nbbId = pkg.name.replace(/nodebb-plugin-/, ''),
+	pkg = fs.readJsonSync(path.join(__dirname + '/../package.json')),
+    	nbbId = pkg.name.replace(/nodebb-plugin-/, ''),
 	Plugin = {
 		admin: {
 			menu: function(custom_header) {
