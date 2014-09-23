@@ -2,14 +2,15 @@
 var	fs = require('fs-extra'),
 	marked = require('marked'),
 	path = require('path'),
-
-	ImportUbb = {
+	pkg = fs.readJsonSync(path.join(__dirname + '../package.json')),
+    nbbId = pkg.name.replace(/nodebb-plugin-/, ''),
+	Plugin = {
 		admin: {
 			menu: function(custom_header) {
 				custom_header.plugins.push({
-					"route": '/plugins/import-ubb',
+					"route": '/plugins/' + nbbId,
 					"icon": 'icon-edit',
-					"name": 'ImportUbb'
+					"name": nbbId
 				});
 
 				return custom_header;
@@ -20,14 +21,14 @@ var	fs = require('fs-extra'),
 						if (err) throw err;
 
 						custom_routes.routes.push({
-							route: '/plugins/import-ubb',
+							route: '/plugins/' + nbbId,
 							method: "get",
 							options: function(req, res, callback) {
 								callback({
 									req: req,
 									res: res,
-									route: '/plugins/import-ubb',
-									name: ImportUbb,
+									route: '/plugins/' + nbbId,
+									name: Plugin,
 									content: content
 								});
 							}
@@ -40,4 +41,4 @@ var	fs = require('fs-extra'),
 		}
 	};
 
-module.exports = ImportUbb;
+module.exports = Plugin;
