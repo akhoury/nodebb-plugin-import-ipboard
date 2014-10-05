@@ -71,9 +71,10 @@ var logPrefix = '[' + pkg.name + ']';
             });
     };
 
-    Exporter.getUsers = function(config, callback) {
-        Exporter.log('getUsers');
-
+    Exporter.getUsers = function(callback) {
+        return Exporter.getPaginatedUsers(0, -1, callback);
+    };
+    Exporter.getPaginatedUsers = function(start, limit, callback) {
         if (_.isFunction(config)) {
             callback = config;
             config = {};
@@ -97,7 +98,9 @@ var logPrefix = '[' + pkg.name + ']';
             + prefix + 'members.title as _title, '
             + prefix + 'members.members_profile_views as _profileviews, '
             + 'CONCAT(' + prefix + 'members.bday_month, \'/\', ' + prefix + 'members.bday_day, \'/\', '  + prefix + 'members.bday_year)' + ' as _birthday '
-            + ' from ' + prefix + 'members ';
+            + ' from ' + prefix + 'members '
+            + (start >= 0 && limit >= 0 ? 'LIMIT ' + start + ',' + limit : '');
+
         // _banned and _level are determined below
 
         getGroups(function(err, groups) {
@@ -111,45 +114,35 @@ var logPrefix = '[' + pkg.name + ']';
                     //normalize here
                     var map = {};
                     rows.forEach(function(row) {
-                        if (row._username && row._email) {
 
-                            // nbb forces signatures to be less than 150 chars
-                            // keeping it HTML see https://github.com/akhoury/nodebb-plugin-import#markdown-note
-                            row._signature = Exporter.truncateStr(row._signature || '', 150);
-                            // from unix timestamp (s) to JS timestamp (ms)
-                            row._joindate = ((row._joindate || 0) * 1000) || startms;
-                            // lower case the email for consistency
-                            row._email = row._email.toLowerCase();
-                            row._birthday = moment(row._birthday, 'MM/DD/YYYY').isValid() ? row._birthday : '';
-                            // I don't know about you about I noticed a lot my users have incomplete urls, urls like: http://
-                            row._picture = Exporter.validateUrl(row._picture);
-                            row._website = Exporter.validateUrl(row._website);
+                        // nbb forces signatures to be less than 150 chars
+                        // keeping it HTML see https://github.com/akhoury/nodebb-plugin-import#markdown-note
+                        row._signature = Exporter.truncateStr(row._signature || '', 150);
+                        // from unix timestamp (s) to JS timestamp (ms)
+                        row._joindate = ((row._joindate || 0) * 1000) || startms;
+                        // lower case the email for consistency
+                        row._email = (row._email || '').toLowerCase();
+                        row._birthday = moment(row._birthday, 'MM/DD/YYYY').isValid() ? row._birthday : '';
+                        // I don't know about you about I noticed a lot my users have incomplete urls, urls like: http://
+                        row._picture = Exporter.validateUrl(row._picture);
+                        row._website = Exporter.validateUrl(row._website);
 
-                            // let's check the group that this user belongs to and set the right privileges
-                            row._level = groups[row._gid]._administrator > 0 && groups[row._gid]._moderator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
-                            row._banned = groups[row._gid]._notbanned > 0 ? 0 : 1;
+                        // let's check the group that this user belongs to and set the right privileges
+                        row._level = groups[row._gid]._administrator > 0 && groups[row._gid]._moderator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
+                        row._banned = groups[row._gid]._notbanned > 0 ? 0 : 1;
 
-                            map[row._uid] = row;
-                        } else {
-                            var requiredValues = [row._username, row._email];
-                            var requiredKeys = ['_username','_email'];
-                            var falsyIndex = Exporter.whichIsFalsy(requiredValues);
-
-                            Exporter.warn('Skipping user._uid: ' + row._uid + ' because ' + requiredKeys[falsyIndex] + ' is falsy. Value: ' + requiredValues[falsyIndex]);
-
-                        }
+                        map[row._uid] = row;
                     });
-
-                    // keep a copy of the users in memory here
-                    Exporter._users = map;
 
                     callback(null, map);
                 });
         });
     };
 
-    Exporter.getCategories = function(config, callback) {
-        Exporter.log('getCategories');
+    Exporter.getCategories = function(callback) {
+        return Exporter.getPaginatedCategories(0, -1, callback);    
+    };
+    Exporter.getPaginatedCategories = function(start, limit, callback) {
 
         if (_.isFunction(config)) {
             callback = config;
@@ -169,7 +162,9 @@ var logPrefix = '[' + pkg.name + ']';
             + prefix + 'forums.name as _name, '
             + prefix + 'forums.description as _description, '
             + prefix + 'forums.parent_id as _parent '
-            + ' from ' + prefix + 'forums ';
+            + ' from ' + prefix + 'forums '
+            + (start >= 0 && limit >= 0 ? 'LIMIT ' + start + ',' + limit : '');
+
 
         Exporter.connection.query(query,
             function(err, rows) {
@@ -181,26 +176,20 @@ var logPrefix = '[' + pkg.name + ']';
                 //normalize here
                 var map = {};
                 rows.forEach(function(row) {
-                    if (row._name) {
-                        row._description = row._description || 'No decsciption available';
-                        row._timestamp = ((row._timestamp || 0) * 1000) || startms;
-
-                        map[row._cid] = row;
-                    } else {
-                        Exporter.warn('Skipping category._cid:' + row._cid + ' because category._name=' + row._name + ' is invalid');
-                    }
+                    row._name = row._name || 'Untitled Category';
+                    row._description = row._description || 'No decsciption available';
+                    row._timestamp = ((row._timestamp || 0) * 1000) || startms;
+                    map[row._cid] = row;
                 });
-
-                // keep a copy in memory
-                Exporter._categories = map;
 
                 callback(null, map);
             });
     };
 
-    Exporter.getTopics = function(config, callback) {
-        Exporter.log('getTopics');
-
+    Exporter.getTopics = function(callback) {
+        return Exporter.getPaginatedTopics(0, -1, callback);
+    };
+    Exporter.getPaginatedTopics = function(start, limit, callback) {
         if (_.isFunction(config)) {
             callback = config;
             config = {};
@@ -231,7 +220,8 @@ var logPrefix = '[' + pkg.name + ']';
             + prefix + 'posts.topic_id as _post_tid '
             + 'FROM ' + prefix + 'topics, ' + prefix + 'posts '
             + 'WHERE ' + prefix + 'topics.tid=' + prefix + 'posts.topic_id '
-            + 'AND ' + prefix + 'posts.new_topic=1 ';
+            + 'AND ' + prefix + 'posts.new_topic=1 '
+            + (start >= 0 && limit >= 0 ? 'LIMIT ' + start + ',' + limit : '');
 
 
         Exporter.connection.query(query,
@@ -243,40 +233,21 @@ var logPrefix = '[' + pkg.name + ']';
 
                 //normalize here
                 var map = {};
-                var msg = 'You must run getCategories() before you can getTopics()';
-
-                if (!Exporter._categories) {
-                    err = {error: 'Categories are not in memory. ' + msg};
-                    Exporter.error(err.error);
-                    return callback(err);
-                }
 
                 rows.forEach(function(row) {
-                    if (Exporter._categories[row._cid]) {
-
-                        row._title = row._title ? row._title[0].toUpperCase() + row._title.substr(1) : 'Untitled';
-                        row._timestamp = ((row._timestamp || 0) * 1000) || startms;
-
-                        map[row._tid] = row;
-                    } else {
-                        var requiredValues = [Exporter._categories[row._cid]];
-                        var requiredKeys = ['category'];
-                        var falsyIndex = Exporter.whichIsFalsy(requiredValues);
-
-                        Exporter.warn('Skipping topic._tid: ' + row._tid + ' because ' + requiredKeys[falsyIndex] + ' is falsy. Value: ' + requiredValues[falsyIndex]);
-                    }
+                    row._title = row._title ? row._title[0].toUpperCase() + row._title.substr(1) : 'Untitled';
+                    row._timestamp = ((row._timestamp || 0) * 1000) || startms;
+                    map[row._tid] = row;
                 });
-
-                // keep a copy in memory
-                Exporter._topics = map;
 
                 callback(null, map);
             });
     };
 
-    Exporter.getPosts = function(config, callback) {
-        Exporter.log('getPosts');
-
+    Exporter.getPosts = function(callback) {
+        return Exporter.getPaginatedPosts(0, -1, callback);
+    };
+    Exporter.getPaginatedPosts = function(start, limit, callback) {
         if (_.isFunction(config)) {
             callback = config;
             config = {};
@@ -299,7 +270,9 @@ var logPrefix = '[' + pkg.name + ']';
             + prefix + 'posts.post_date as _timestamp, '
             + prefix + 'posts.edit_time as _edittimestamp '
             + 'FROM ' + prefix + 'posts '
-            + 'WHERE ' + prefix + 'posts.new_topic=0 ';
+            + 'WHERE ' + prefix + 'posts.new_topic=0 '
+            + (start >= 0 && limit >= 0 ? 'LIMIT ' + start + ',' + limit : '');
+
 
         Exporter.connection.query(query,
             function(err, rows) {
@@ -310,25 +283,10 @@ var logPrefix = '[' + pkg.name + ']';
 
                 //normalize here
                 var map = {};
-                var msg = 'You must run getTopics() before you can getPosts()';
-
-                if (!Exporter._topics) {
-                    err = {error: 'Topics are not in memory. ' + msg};
-                    Exporter.error(err.error);
-                    return callback(err);
-                }
-
                 rows.forEach(function(row) {
-                    if (Exporter._topics[row._tid] && row._content) {
-                        row._timestamp = ((row._timestamp || 0) * 1000) || startms;
-                        map[row._pid] = row;
-                    } else {
-                        var requiredValues = [Exporter._topics[row._tid], row._content];
-                        var requiredKeys = ['topic', 'content'];
-                        var falsyIndex = Exporter.whichIsFalsy(requiredValues);
-
-                        Exporter.warn('Skipping post._pid: ' + row._pid + ' because ' + requiredKeys[falsyIndex] + ' is falsy. Value: ' + requiredValues[falsyIndex]);
-                    }
+                    row._content = row._content || '';
+                    row._timestamp = ((row._timestamp || 0) * 1000) || startms;
+                    map[row._pid] = row;
                 });
 
                 callback(null, map);
@@ -361,6 +319,29 @@ var logPrefix = '[' + pkg.name + ']';
             },
             function(next) {
                 Exporter.getPosts(next);
+            },
+            function(next) {
+                Exporter.teardown(next);
+            }
+        ], callback);
+    };
+    
+    Exporter.paginatedTestrun = function(config, callback) {
+        async.series([
+            function(next) {
+                Exporter.setup(config, next);
+            },
+            function(next) {
+                Exporter.getPaginatedUsers(0, 1000, next);
+            },
+            function(next) {
+                Exporter.getPaginatedCategories(0, 1000, next);
+            },
+            function(next) {
+                Exporter.getPaginatedTopics(0, 1000, next);
+            },
+            function(next) {
+                Exporter.getPaginatedPosts(1001, 2000, next);
             },
             function(next) {
                 Exporter.teardown(next);
