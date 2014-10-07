@@ -75,11 +75,6 @@ var logPrefix = '[' + pkg.name + ']';
         return Exporter.getPaginatedUsers(0, -1, callback);
     };
     Exporter.getPaginatedUsers = function(start, limit, callback) {
-        if (_.isFunction(config)) {
-            callback = config;
-            config = {};
-        }
-
         callback = !_.isFunction(callback) ? noop : callback;
 
         if (!Exporter.connection) {
@@ -144,11 +139,6 @@ var logPrefix = '[' + pkg.name + ']';
     };
     Exporter.getPaginatedCategories = function(start, limit, callback) {
 
-        if (_.isFunction(config)) {
-            callback = config;
-            config = {};
-        }
-
         callback = !_.isFunction(callback) ? noop : callback;
 
         if (!Exporter.connection) {
@@ -190,11 +180,6 @@ var logPrefix = '[' + pkg.name + ']';
         return Exporter.getPaginatedTopics(0, -1, callback);
     };
     Exporter.getPaginatedTopics = function(start, limit, callback) {
-        if (_.isFunction(config)) {
-            callback = config;
-            config = {};
-        }
-
         callback = !_.isFunction(callback) ? noop : callback;
 
         if (!Exporter.connection) {
@@ -248,11 +233,6 @@ var logPrefix = '[' + pkg.name + ']';
         return Exporter.getPaginatedPosts(0, -1, callback);
     };
     Exporter.getPaginatedPosts = function(start, limit, callback) {
-        if (_.isFunction(config)) {
-            callback = config;
-            config = {};
-        }
-
         callback = !_.isFunction(callback) ? noop : callback;
 
         if (!Exporter.connection) {
