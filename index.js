@@ -25,8 +25,6 @@ var logPrefix = '[' + pkg.name + ']';
             database: config.dbname || config.name || config.database || name
         };
 
-        Exporter.log(_config);
-
         Exporter.config(_config);
         Exporter.config('prefix', config.prefix || config.tablePrefix || pkg._tablePrefix || '');
 
