@@ -22,11 +22,14 @@ var	fs = require('fs-extra'),
                 return callback(null, custom_header);
             },
 
-            load: function(app, middleware, controllers, callback) {
+            load: function(params, callback) {
                 var render = function(req, res, next) {
                     return res.render('admin/plugins/' + nbbId);
                 };
-
+                var app = params.app,
+                    middleware = params.middleware,
+                    controllers = params.controllers;
+                    
                 app.get(prefix, middleware.admin.buildHeader, render);
                 app.get(apiPrefix, render);
 
