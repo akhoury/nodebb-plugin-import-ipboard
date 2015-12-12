@@ -3,11 +3,14 @@ var fs = require('fs-extra');
 require('./index').testrun({
     dbhost: 'localhost',
     dbport: 3306,
-    dbname: 'ipboard',
+    dbname: 'ipb',
     dbuser: 'user',
     dbpass: 'password',
 
-    tablePrefix: 'IPB_'
+    tablePrefix: 'ipb_'
 }, function(err, results) {
-    fs.writeFileSync('./tmp.json', JSON.stringify(results, undefined, 2));
+	results.forEach(function(r, i) {
+		console.log(i, r && Object.keys(r).length);
+	});
+    // fs.writeFileSync('./tmp.json', JSON.stringify(results, undefined, 2));
 });

@@ -1,6 +1,6 @@
 {
     "name": "nodebb-plugin-import-ipboard",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "a IP.Board exporter to NodeBB",
     "main": "./index.js",
     "scripts": {
@@ -34,7 +34,5 @@
         "marked": "~0.3.2",
         "moment": "~2.8.2",
         "mysql": "~2.4.2"
-    },
-
-    "_tablePrefix": "IPB_"
+    }
 }
