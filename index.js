@@ -83,16 +83,16 @@ var logPrefix = '[' + pkg.name + ']';
 		var startms = +new Date();
 
 		var query = 'SELECT '
-				+ prefix + 'members.member_id as _uid, '
+				+ prefix + 'members.id as _uid, '
 				+ prefix + 'members.name as _username, '
 				+ prefix + 'members.members_display_name as _alternativeUsername, '
 				+ prefix + 'members.email as _email, '
-				+ prefix + 'members.member_group_id as _gid, '
+				+ prefix + 'members.mgroup as _gid, '
 				+ prefix + 'members.joined as _joindate, '
 				+ prefix + 'members.title as _badge, '
 				+ prefix + 'members.members_profile_views as _profileviews, '
 				+ prefix + 'members.hide_email as _showemail, '
-				+ prefix + 'members.member_banned as _banned, '
+				+ prefix + 'members.temp_ban as _banned, '
 				+ prefix + 'members.last_activity as _lastposttime, '
 				+ prefix + 'members.last_visit as _lastonline, '
 
