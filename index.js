@@ -63,7 +63,7 @@ var logPrefix = '[' + pkg.name + ']';
 					rows.forEach(function(row) {
 						map[row._gid] = row;
 					});
-					// keep a copy of the users in memory here
+					// keep a copy of the groups in memory here
 					Exporter._groups = map;
 					callback(null, map);
 				});
