@@ -63,7 +63,7 @@ var logPrefix = '[' + pkg.name + ']';
 					rows.forEach(function(row) {
 						map[row._gid] = row;
 					});
-					// keep a copy of the users in memory here
+					// keep a copy of the groups in memory here
 					Exporter._groups = map;
 					callback(null, map);
 				});
@@ -83,16 +83,16 @@ var logPrefix = '[' + pkg.name + ']';
 		var startms = +new Date();
 
 		var query = 'SELECT '
-				+ prefix + 'members.member_id as _uid, '
+				+ prefix + 'members.id as _uid, '
 				+ prefix + 'members.name as _username, '
 				+ prefix + 'members.members_display_name as _alternativeUsername, '
 				+ prefix + 'members.email as _email, '
-				+ prefix + 'members.member_group_id as _gid, '
+				+ prefix + 'members.mgroup as _gid, '
 				+ prefix + 'members.joined as _joindate, '
 				+ prefix + 'members.title as _badge, '
 				+ prefix + 'members.members_profile_views as _profileviews, '
 				+ prefix + 'members.hide_email as _showemail, '
-				+ prefix + 'members.member_banned as _banned, '
+				+ '(UNIX_TIMESTAMP() - SUBSTRING_INDEX(SUBSTRING_INDEX(' + prefix + 'members.temp_ban, ":", 2), ":", -1)) < 0 as _banned, '
 				+ prefix + 'members.last_activity as _lastposttime, '
 				+ prefix + 'members.last_visit as _lastonline, '
 
@@ -103,6 +103,13 @@ var logPrefix = '[' + pkg.name + ']';
 
 		// _banned and _level are determined below
 
+		// use this fake group as a default for when group is not found
+		var noGroup = {
+			_notbanned: 1,
+			_pending: 0,
+			_administrator: 0,
+			_moderator: 0
+		};
 		getGroups(function(err, groups) {
 			Exporter.connection.query(query,
 					function(err, rows) {
@@ -124,8 +131,9 @@ var logPrefix = '[' + pkg.name + ']';
 							row._website = Exporter.validateUrl(row._website);
 
 							// let's check the group that this user belongs to and set the right privileges
-							row._level = groups[row._gid]._administrator > 0 && groups[row._gid]._moderator > 0 ? 'administrator' : groups[row._gid]._moderator > 0 ? 'moderator' : 'member';
-							row._banned = row._banned ? 1 : groups[row._gid]._notbanned > 0 ? 0 : 1;
+							group = groups[row._gid] || noGroup;
+							row._level = groups._administrator > 0 && group._moderator > 0 ? 'administrator' : group._moderator > 0 ? 'moderator' : 'member';
+							row._banned = row._banned ? 1 : group._notbanned > 0 ? 0 : 1;
 
 							row._showemail = !row._showemail;
 
